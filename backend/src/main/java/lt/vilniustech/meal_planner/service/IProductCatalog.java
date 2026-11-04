@@ -15,4 +15,7 @@ public interface IProductCatalog {
     List<Product> productsByIds(Collection<Long> ids);
 
     List<Allergen> allergensByIds(Collection<Long> ids);
+
+    /** Leistini produktai: be produktų su kliento alergenais ir be nemėgstamų produktų (PRD-2). */
+    List<Product> allowedProducts(Collection<Allergen> allergens, Collection<Product> dislikedProducts);
 }

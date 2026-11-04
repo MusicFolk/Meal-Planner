@@ -1,6 +1,5 @@
 package lt.vilniustech.meal_planner.repository;
 
-import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import lt.vilniustech.meal_planner.entity.MealPlan;
@@ -14,11 +13,6 @@ public interface MealPlanRepository extends JpaRepository<MealPlan, Long> {
     Optional<MealPlan> findByClientIdAndActiveTrue(Long clientId);
 
     List<MealPlan> findByClientIdOrderByCreatedAtDesc(Long clientId);
-
-    /** Demonstracinis plano šablonas (1 sprintas). */
-    Optional<MealPlan> findFirstByClientIsNullOrderByIdAsc();
-
-    long countByClientIdAndCreatedAtGreaterThanEqual(Long clientId, Instant from);
 
     /** Ankstesnis aktualus planas pažymimas neaktualiu, bet neištrinamas (FR-15). */
     @Modifying(flushAutomatically = true)

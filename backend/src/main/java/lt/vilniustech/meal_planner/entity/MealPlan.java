@@ -17,7 +17,7 @@ import java.util.List;
 
 /**
  * Savaitės mitybos planas – struktūrinė klasė, kurią sudaro 7 dienos ir produktų sąrašas.
- * Planas be kliento (client = null) yra demonstracinis šablonas (1 sprintas).
+ * Planas be kliento (client = null) yra demonstracinis šablonas (1 sprintas, NFR-41).
  */
 @Entity
 public class MealPlan {
@@ -54,6 +54,12 @@ public class MealPlan {
         this.dailyCalories = dailyCalories;
         this.aiGenerated = aiGenerated;
         this.active = true;
+    }
+
+    /** DI sugeneruotas planas priskiriamas klientui tik jį išsaugant (FR-15). */
+    public void assignTo(Client client, Instant createdAt) {
+        this.client = client;
+        this.createdAt = createdAt;
     }
 
     public PlanDay addDay(int dayNumber) {

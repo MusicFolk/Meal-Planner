@@ -1,5 +1,6 @@
 package lt.vilniustech.meal_planner.controller;
 
+import lt.vilniustech.meal_planner.dto.MealPlanDtos.GenerationProgressDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.GenerationStatusDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.MealPlanDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.PurchasedRequest;
@@ -7,6 +8,7 @@ import lt.vilniustech.meal_planner.dto.MealPlanDtos.RecipeDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.ShoppingListDto;
 import lt.vilniustech.meal_planner.security.AppUserDetails;
 import lt.vilniustech.meal_planner.service.MealPlanService;
+import lt.vilniustech.meal_planner.service.PlanGenerationService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,9 +26,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class MealPlanController {
 
     private final MealPlanService plans;
+    private final PlanGenerationService generation;
 
-    public MealPlanController(MealPlanService plans) {
+    public MealPlanController(MealPlanService plans, PlanGenerationService generation) {
         this.plans = plans;
+        this.generation = generation;
     }
 
     /** Aktualus planas arba 204, jei plano dar nėra (FR-17). */
@@ -38,13 +42,21 @@ public class MealPlanController {
 
     @GetMapping("/generation-status")
     public GenerationStatusDto generationStatus(@AuthenticationPrincipal AppUserDetails user) {
-        return plans.generationStatus(user.getId());
+        return generation.status(user.getId());
     }
 
+    /** Sugeneruoja arba perkuria visą planą su DI (FR-10–FR-16); sinchroninis, iki 60 s. */
     @PostMapping("/generate")
     @ResponseStatus(HttpStatus.CREATED)
     public MealPlanDto generate(@AuthenticationPrincipal AppUserDetails user) {
-        return plans.generate(user.getId());
+        return generation.generate(user.getId());
+    }
+
+    /** Paskutinio generavimo eiga pagal valgymo tipus arba 204, jei generavimų dar nebuvo (FR-09). */
+    @GetMapping("/generations/current")
+    public ResponseEntity<GenerationProgressDto> generationProgress(@AuthenticationPrincipal AppUserDetails user) {
+        return generation.progress(user.getId()).map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     @GetMapping("/dishes/{dishId}")

@@ -6,6 +6,8 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lt.vilniustech.meal_planner.calories.CalorieResult;
 import lt.vilniustech.meal_planner.calories.ICalorieCalculator;
 import lt.vilniustech.meal_planner.dto.CatalogDtos.AllergenDto;
@@ -16,6 +18,7 @@ import lt.vilniustech.meal_planner.dto.QuestionnaireDtos.QuestionnaireRequest;
 import lt.vilniustech.meal_planner.dto.QuestionnaireDtos.QuestionnaireResponse;
 import lt.vilniustech.meal_planner.dto.QuestionnaireDtos.SaveResponse;
 import lt.vilniustech.meal_planner.entity.Client;
+import lt.vilniustech.meal_planner.entity.Product;
 import lt.vilniustech.meal_planner.entity.Questionnaire;
 import lt.vilniustech.meal_planner.exception.ApiException;
 import lt.vilniustech.meal_planner.repository.QuestionnaireRepository;
@@ -93,6 +96,18 @@ public class QuestionnaireService implements IQuestionnaire {
     public Optional<QuestionnaireResponse> anonymized(Long clientId) {
         // Atsakyme nėra kliento vardo ir el. pašto
         return get(clientId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<GenerationInput> generationInput(Long clientId) {
+        return questionnaires.findByClientId(clientId).map(q -> {
+            List<Product> allowed = catalog.allowedProducts(q.getAllergies(), q.getDislikedProducts());
+            Set<Long> allowedIds = allowed.stream().map(Product::getId).collect(Collectors.toSet());
+            Set<Long> forbidden = catalog.allProducts().stream().map(Product::getId)
+                    .filter(id -> !allowedIds.contains(id)).collect(Collectors.toSet());
+            return new GenerationInput(q.getDailyCalories(), allowed, forbidden);
+        });
     }
 
     private CalorieResult calculate(Questionnaire q) {

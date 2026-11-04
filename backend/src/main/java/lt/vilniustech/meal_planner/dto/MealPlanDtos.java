@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import lt.vilniustech.meal_planner.entity.NutritionValue;
+import lt.vilniustech.meal_planner.enums.AiRequestResult;
+import lt.vilniustech.meal_planner.enums.GenerationStatus;
 import lt.vilniustech.meal_planner.enums.MealType;
 import lt.vilniustech.meal_planner.enums.ProductCategory;
 import lt.vilniustech.meal_planner.enums.SubscriptionStatus;
@@ -62,6 +64,20 @@ public final class MealPlanDtos {
 
     /** Ar klientas gali gauti naują planą (FR-08) ir, jei ne, kodėl. */
     public record GenerationStatusDto(boolean canGenerate, String reason, boolean questionnaireFilled,
-                                      SubscriptionStatus subscriptionStatus, int remainingToday, int dailyLimit) {
+                                      SubscriptionStatus subscriptionStatus, int remainingToday, int dailyLimit,
+                                      boolean inProgress) {
+    }
+
+    /** Generavimo eiga pagal valgymo tipus (FR-09). */
+    public record GenerationProgressDto(Long id, GenerationStatus status, Instant startedAt,
+                                        List<MealProgressDto> meals) {
+    }
+
+    /**
+     * @param attempts   atliktų DI bandymų skaičius
+     * @param lastResult paskutinio bandymo patikros rezultatas
+     * @param done       ar valgymo tipo patiekalai jau gauti
+     */
+    public record MealProgressDto(MealType type, int attempts, AiRequestResult lastResult, boolean done) {
     }
 }
