@@ -1,0 +1,37 @@
+{
+  "type": "object",
+  "properties": {
+    "dishes": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string", "description": "Patiekalo pavadinimas lietuvių kalba" },
+          "ingredients": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "items": {
+              "type": "object",
+              "properties": {
+                "productId": { "type": "integer", "description": "Produkto id iš sąrašo products" },
+                "grams": { "type": "integer", "minimum": 1, "maximum": 2000 }
+              },
+              "required": ["productId", "grams"]
+            }
+          },
+          "steps": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["name", "ingredients", "steps"]
+      }
+    }
+  },
+  "required": ["dishes"]
+}
