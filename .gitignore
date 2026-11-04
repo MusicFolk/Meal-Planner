@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Aplinka ###
+.env
+
+# Lokalūs Docker Compose pakeitimai
+docker-compose.override.yml
