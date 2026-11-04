@@ -4,8 +4,9 @@ Asmeninio mitybos planavimo sistema „Meal Planner“ – kompleksinis projekta
 Sistema pagal kliento anketą apskaičiuoja KMI ir paros kalorijų poreikį (Mifflin–St Jeor),
 pateikia savaitės mitybos planą su receptais ir produktų sąrašu, leidžia užsakyti dietologo peržiūrą.
 
-Šioje versijoje įgyvendintas **1 sprintas** (14 lentelė): visas sistemos karkasas be DI.
-Planai sudaromi iš demonstracinio plano šablono DB, porcijas proporcingai pritaikant kliento paros poreikiui.
+Šioje versijoje įgyvendinti **1 ir 2 sprintai** (14 lentelė): visas sistemos karkasas ir DI komponentas –
+savaitės planą sugeneruoja Google Gemini modelis, o sistema patikrina jo kaloringumą (±10 %) ir alergenus.
+1 sprinto demonstraciniai planai DB lieka (žyma „Demonstracinis planas“).
 
 ## Struktūra (NFR-35)
 
@@ -35,10 +36,11 @@ Backend klasės (`lt.vilniustech.meal_planner`) sugrupuotos pagal sluoksnius:
 | `config` | Spring konfigūracija (saugumas, kalorijų modulis) |
 | `security` | Prisijungusio naudotojo duomenys |
 | `calories` | Kalorijų skaičiavimo (KAL) modulis – atskiras, be priklausomybių (NFR-48) |
+| `ai` | DI adapteris (DIA) «DI agentas» – sąsaja `IAIAgent`, Gemini per Spring AI (NFR-45, NFR-48) |
 
 Architektūros komponentus (3.5 poskyris) atitinka servisai: AUT – `AuthService`, `SessionService`;
 NAU – `AccountService`, `AdminUserService`; ANK – `QuestionnaireService`; PRD – `ProductCatalogService`;
-PLN – `MealPlanService`; PER – `ReviewService`; MOK – `PaymentService`, `SubscriptionService`;
+PLN – `MealPlanService`, `PlanGenerationService`; DIA – `GeminiAgent`; PER – `ReviewService`; MOK – `PaymentService`, `SubscriptionService`;
 pranešimai klientui – `NotificationService`.
 
 ## Paleidimas su Docker (NFR-37)
@@ -46,7 +48,7 @@ pranešimai klientui – `NotificationService`.
 Reikia tik Docker.
 
 ```bash
-cp .env.example .env      # pakeiskite DB_PASSWORD
+cp .env.example .env      # pakeiskite DB_PASSWORD ir įrašykite GEMINI_API_KEY
 docker compose up --build
 ```
 
@@ -61,7 +63,7 @@ docker run -d --name mp-dev-db -e POSTGRES_DB=mealplanner -e POSTGRES_USER=mealp
   -e POSTGRES_PASSWORD=mealplanner -p 5432:5432 postgres:18
 
 # Programų serveris (http://localhost:8080)
-cd backend && COOKIE_SECURE=false ./mvnw spring-boot:run
+cd backend && COOKIE_SECURE=false GEMINI_API_KEY=... ./mvnw spring-boot:run
 
 # Kliento sąsaja (http://localhost:5173, /api/ perduodama į 8080)
 cd frontend && npm install && npm run dev
@@ -99,9 +101,34 @@ Mokėjimai vykdomi per banko sąsajos imitaciją: atsidariusiame lange pasirinki
 - prenumerata (7 d. bandomasis laikotarpis, 30 d. apmokėjimas, nepratęsiama automatiškai);
 - duomenų atsisiuntimas JSON formatu, paskyros ištrynimas (mokėjimai nuasmeninami), tema ir savaitės pirmoji diena.
 
-Kituose sprintuose: DI generavimas su Gemini, plano patikra, `AiGenerationRequest`, `PlanValidation` (2 sprintas);
-planų istorija, DI parametrai, `AiConfiguration` (3 sprintas). HTTPS su Let's Encrypt (NFR-11) konfigūruojamas
-diegiant į Azure prieš galutinę demonstraciją.
+## 2 sprinto apimtis
+
+Įgyvendintos naudotojų istorijos NI-16–NI-18 (užduotis 2 ir antrinė 2.1):
+
+- plano generavimas su DI: paros poreikis paskirstomas valgymams (25 / 40 / 35 %), trys valgymo tipų užklausos
+  Gemini siunčiamos lygiagrečiai, kiekvienoje prašoma 7 skirtingų patiekalų;
+- DI gauna tik valgymo tipą, patiekalo kalorijų tikslą ir leistinų produktų sąrašą (ID, pavadinimas, kcal/100 g)
+  be kliento alergenų ir nemėgstamų produktų – asmens ir anketos duomenys nesiunčiami (NFR-55);
+- atsakymo JSON schemos ir produktų ID patikra, maistinė vertė pagal produktų DB, porcijų koregavimas
+  (koeficientas 0,7–1,3), netinkamo valgymo tipo kartojimas iki 3 kartų, 25 s vienam kvietimui, 60 s visam generavimui;
+- plano patikra (±10 % kiekvienai dienai, alergenai, receptai); nepavykus aktualus planas nekeičiamas;
+- kiekvienas DI kvietimas (užklausa ir atsakymas JSONB) ir generavimo būsena saugomi lentelėse
+  `ai_generation_request` ir `plan_generation`, taip pat ir nesėkmės atveju;
+- dienos limitas (5) skaičiuojamas pagal šiandienos (Lietuvos laiku) sėkmingus generavimus;
+- generavimo metu rodoma kiekvieno valgymo tipo eiga; perkūrimas – tik viso plano.
+
+DI užklausos šablonas ir atsakymo schema: `backend/src/main/resources/prompts/`. DI modelis nurodomas
+aplinkos kintamuoju `GEMINI_MODEL` (numatytasis `gemini-3.5-flash-lite`).
+
+Generavimų analizei (4.3 poskyris), pvz., atmestų atsakymų dalis ir vidutinė trukmė:
+
+```sql
+SELECT meal_type, result, count(*), round(avg(duration_ms)) FROM ai_generation_request GROUP BY 1, 2 ORDER BY 1, 2;
+SELECT status, count(*), avg(finished_at - started_at) FROM plan_generation GROUP BY status;
+```
+
+3 sprinte: planų istorija, DI parametrų administravimas (`AiConfiguration`), testavimas. HTTPS su Let's Encrypt
+(NFR-11) konfigūruojamas diegiant į Azure prieš galutinę demonstraciją.
 
 ## Trumpa instrukcija dietologui (NFR-43)
 
