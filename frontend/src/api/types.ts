@@ -103,6 +103,8 @@ export interface Meal {
 export interface PlanDay {
   dayNumber: number;
   totalCalories: number;
+  /** Dienos kaloringumo nuokrypis nuo paros poreikio, % (FR-13) */
+  deviationPercent: number | null;
   meals: Meal[];
 }
 
@@ -149,6 +151,23 @@ export interface GenerationStatus {
   subscriptionStatus: SubscriptionStatus;
   remainingToday: number;
   dailyLimit: number;
+  inProgress: boolean;
+}
+
+export type AiRequestResult =
+  | 'VALID'
+  | 'INVALID_SCHEMA'
+  | 'INVALID_PRODUCT'
+  | 'PORTION_OUT_OF_RANGE'
+  | 'TIMEOUT'
+  | 'API_ERROR';
+
+/** Plano generavimo eiga pagal valgymo tipus (FR-09). */
+export interface GenerationProgress {
+  id: number;
+  status: 'IN_PROGRESS' | 'SUCCESS' | 'FAILED';
+  startedAt: string;
+  meals: { type: MealType; attempts: number; lastResult: AiRequestResult | null; done: boolean }[];
 }
 
 export interface Comment {

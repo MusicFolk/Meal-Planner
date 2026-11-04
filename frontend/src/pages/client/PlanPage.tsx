@@ -22,8 +22,10 @@ import { useNavigate } from 'react-router';
 import { api, ApiError } from '../../api/client';
 import type {
   ClientReview,
+  GenerationProgress,
   GenerationStatus,
   MealPlan,
+  MealType,
   OrderInfo,
   ShoppingList,
   Subscription,
@@ -37,6 +39,7 @@ import { ReviewStatusProgress } from '../../components/ReviewStatusProgress';
 import { useAuth } from '../../context/AuthContext';
 import { useMessage } from '../../context/MessageContext';
 import { formatDate, formatDayHeading, formatInt, formatWeekRange, planCalendar } from '../../lib/format';
+import { mealTypeLabels } from '../../lib/labels';
 
 interface PlanData {
   plan: MealPlan | undefined;
@@ -66,6 +69,7 @@ export function PlanPage() {
   const showMessage = useMessage();
   const [data, setData] = useState<PlanData | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [progress, setProgress] = useState<GenerationProgress>();
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   useEffect(() => {
@@ -74,8 +78,21 @@ export function PlanPage() {
       .catch((e: ApiError) => showMessage('error', e.message));
   }, [showMessage]);
 
+  // Kol vyksta generavimas, kas sekundę gaunama kiekvieno valgymo tipo eiga (FR-09)
+  useEffect(() => {
+    if (!generating) return;
+    const timer = window.setInterval(() => {
+      api
+        .get<GenerationProgress | undefined>('/api/meal-plans/generations/current')
+        .then((p) => setProgress(p?.status === 'IN_PROGRESS' ? p : undefined))
+        .catch(() => undefined);
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [generating]);
+
   // Generavimo metu mygtukas neaktyvus, antras generavimas nepradedamas (FR-09)
   const generate = async () => {
+    setProgress(undefined);
     setGenerating(true);
     try {
       await api.post<MealPlan>('/api/meal-plans/generate');
@@ -88,6 +105,8 @@ export function PlanPage() {
       } else {
         showMessage('error', 'Plano sugeneruoti nepavyko. Ankstesnis planas nepakeistas.');
       }
+      // Atnaujinamas likusių generavimų skaičius; nesėkmingas generavimas į limitą neįskaičiuojamas (FR-14)
+      fetchPlanData().then(setData).catch(() => undefined);
     } finally {
       setGenerating(false);
     }
@@ -95,7 +114,7 @@ export function PlanPage() {
 
   if (!data) return <Loading />;
 
-  if (generating) return <Generating />;
+  if (generating) return <Generating progress={progress} />;
 
   const { plan, status, review, orderInfo, shopping, subscription } = data;
 
@@ -112,7 +131,7 @@ export function PlanPage() {
   const day = plan.days.find((d) => d.dayNumber === dayNumber) ?? plan.days[0];
   const calendarDay = calendar.find((c) => c.dayNumber === day.dayNumber)!;
   const target = plan.dailyCalories ?? day.totalCalories;
-  const deviation = target ? ((day.totalCalories - target) / target) * 100 : 0;
+  const deviation = day.deviationPercent ?? (target ? ((day.totalCalories - target) / target) * 100 : 0);
   const completedComments = review?.status === 'COMPLETED' ? review.comments : [];
   const commentCount = (dishId: number) => completedComments.filter((c) => c.dishId === dishId).length;
 
@@ -350,7 +369,10 @@ function EmptyPlan({ status, subscription, onGenerate, onQuestionnaire }: {
   );
 }
 
-function Generating() {
+const MEAL_TYPES: MealType[] = ['BREAKFAST', 'LUNCH', 'DINNER'];
+
+/** Generavimo langas: sukimosi indikatorius ir kiekvieno valgymo tipo eiga (FR-09, 8 pav. b). */
+function Generating({ progress }: { progress: GenerationProgress | undefined }) {
   return (
     <Box sx={{ maxWidth: 560, mx: 'auto', textAlign: 'center', pt: 6 }} role="status">
       <CircularProgress size={64} />
@@ -360,6 +382,30 @@ function Generating() {
       <Typography color="text.secondary" sx={{ mt: 1 }}>
         Tai gali užtrukti iki 60 s. Neuždarykite lango.
       </Typography>
+      <Stack spacing={2} sx={{ mt: 4, textAlign: 'left' }}>
+        {MEAL_TYPES.map((type) => {
+          const meal = progress?.meals.find((m) => m.type === type);
+          const done = meal?.done ?? false;
+          const attempt = (meal?.attempts ?? 0) + 1;
+          return (
+            <Box key={type}>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.5 }}>
+                <Typography sx={{ fontWeight: 600 }}>{mealTypeLabels[type]}</Typography>
+                <Typography variant="body2" color="text.secondary">
+                  {done ? 'Paruošta' : attempt > 1 ? `Kartojama (${attempt} bandymas iš 3)` : 'Generuojama…'}
+                </Typography>
+              </Stack>
+              <LinearProgress
+                variant={done ? 'determinate' : 'indeterminate'}
+                value={100}
+                color={done ? 'success' : attempt > 1 ? 'warning' : 'primary'}
+                sx={{ height: 8, borderRadius: 4 }}
+                aria-label={`${mealTypeLabels[type]}: ${done ? 'paruošta' : 'generuojama'}`}
+              />
+            </Box>
+          );
+        })}
+      </Stack>
       <PrimaryAction>
         <Button variant="contained" size="large" disabled>
           Generuojama…
