@@ -8,26 +8,57 @@
       "items": {
         "type": "object",
         "properties": {
-          "name": { "type": "string", "description": "Patiekalo pavadinimas lietuvių kalba" },
+          "name": {
+            "type": "string",
+            "description": "Patiekalo pavadinimas lietuvių kalba"
+          },
           "ingredients": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
-                "productId": { "type": "integer", "description": "Produkto id iš sąrašo products" },
-                "grams": { "type": "integer", "minimum": 1, "maximum": 2000 }
+                "productId": {
+                  "type": "integer",
+                  "description": "Produkto id iš sąrašo products"
+                },
+                "grams": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2000
+                },
+                "kcal": {
+                  "type": "integer",
+                  "description": "grams × kcalPer100g / 100"
+                }
               },
-              "required": ["productId", "grams"]
+              "required": [
+                "productId",
+                "grams",
+                "kcal"
+              ]
             }
+          },
+          "totalKcal": {
+            "type": "integer",
+            "description": "Ingredientų kcal suma; turi būti artima targetCaloriesPerDish"
           },
           "steps": {
             "type": "array",
-            "items": { "type": "string" }
+            "items": {
+              "type": "string"
+            }
           }
         },
-        "required": ["name", "ingredients", "steps"]
+        "required": [
+          "name",
+          "ingredients",
+          "totalKcal",
+          "steps"
+        ]
       }
     }
   },
-  "required": ["dishes"]
+  "required": [
+    "dishes"
+  ]
 }

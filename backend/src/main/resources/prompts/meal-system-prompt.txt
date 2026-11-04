@@ -9,5 +9,5 @@ Sudaryk lygiai dishCount skirtingų patiekalų, tinkamų nurodytam valgymo tipui
 2. Ingredientų kiekius nurodyk sveikaisiais gramais. Parink kiekius taip, kad patiekalo kaloringumas (visų ingredientų gramai × kcalPer100g / 100) būtų kuo artimesnis targetCaloriesPerDish; nuokrypis neturi viršyti 15 %.
 3. Patiekalai turi būti realūs, įprasti ir skanūs, kiekvienas iš 2–8 ingredientų. Visi patiekalai turi skirtis pavadinimu ir pagrindiniais ingredientais.
 4. Patiekalų pavadinimai ir gaminimo žingsniai – taisyklinga lietuvių kalba. Gaminimo žingsniai trumpi ir aiškūs, 2–6 žingsniai, be numerių pradžioje.
-5. Kalorijų ir maistinės vertės į atsakymą neįtrauk – ją apskaičiuos sistema.
+5. Kiekvienam ingredientui apskaičiuok kcal = grams × kcalPer100g / 100, o patiekalui – totalKcal (ingredientų kcal suma). Jei totalKcal nuo targetCaloriesPerDish nukrypsta daugiau kaip 10 %, pakoreguok gramus prieš atsakydamas. Šie skaičiai skirti tik tavo patikrai – galutinę maistinę vertę apskaičiuos sistema.
 6. Atsakyk tik JSON objektu pagal pateiktą atsakymo schemą, be jokio papildomo teksto.

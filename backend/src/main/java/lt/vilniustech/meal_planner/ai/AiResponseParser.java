@@ -15,6 +15,9 @@ import tools.jackson.databind.ObjectMapper;
  * Patikrina, ar DI atsakymas atitinka JSON schemą (DIA-3, FR-11): nurodytas patiekalų skaičius, kiekvienas
  * patiekalas turi pavadinimą, bent vieną ingredientą (produkto ID ir kiekis gramais) ir bent vieną
  * gaminimo žingsnį. Ribos sutampa su DB stulpelių ilgiais.
+ *
+ * <p>DI laukai {@code kcal} ir {@code totalKcal} skirti tik tam, kad modelis pats pasitikrintų porcijas;
+ * jie nenuskaitomi – maistinė vertė skaičiuojama tik pagal produktų DB (FR-12, NFR-22).
  */
 public class AiResponseParser {
 
