@@ -110,9 +110,12 @@ class GeminiAgentTest {
     @Test
     void apiExceptionAndMissingKeyAreApiError() {
         AiMealResponse failed = agent(prompt -> {
-            throw new IllegalStateException("429 RESOURCE_EXHAUSTED");
+            throw new RuntimeException("Failed to generate content",
+                    new IllegalStateException("429 RESOURCE_EXHAUSTED"));
         }).generateMeals(REQUEST, Duration.ofSeconds(5));
         assertThat(failed.result()).isEqualTo(AiRequestResult.API_ERROR);
+        // Saugoma tikroji priežastis, ne Spring AI apvalkalas
+        assertThat(failed.error()).isEqualTo("IllegalStateException: 429 RESOURCE_EXHAUSTED");
         assertThat(failed.responseJson()).contains("RESOURCE_EXHAUSTED");
 
         AiMealResponse noKey = new GeminiAgent(null, "gemini-test", ChatOptions.builder().build(), "", MAPPER)

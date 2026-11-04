@@ -11,8 +11,6 @@
           "name": { "type": "string", "description": "Patiekalo pavadinimas lietuvių kalba" },
           "ingredients": {
             "type": "array",
-            "minItems": 1,
-            "maxItems": 20,
             "items": {
               "type": "object",
               "properties": {
@@ -24,8 +22,6 @@
           },
           "steps": {
             "type": "array",
-            "minItems": 1,
-            "maxItems": 20,
             "items": { "type": "string" }
           }
         },

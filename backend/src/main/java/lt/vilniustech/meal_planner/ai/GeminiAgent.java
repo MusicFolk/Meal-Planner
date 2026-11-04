@@ -78,10 +78,9 @@ public class GeminiAgent implements IAIAgent {
             return new AiMealResponse(AiRequestResult.TIMEOUT, requestJson, null, List.of(), elapsedMs(started),
                     "DI neatsakė per " + timeout.toSeconds() + " s");
         } catch (ExecutionException e) {
-            Throwable cause = e.getCause() == null ? e : e.getCause();
-            log.warn("Gemini API klaida ({}): {}", request.mealType(), cause.toString());
-            return failure(AiRequestResult.API_ERROR, requestJson, cause.getClass().getSimpleName() + ": "
-                    + cause.getMessage(), elapsedMs(started));
+            String error = rootCause(e);
+            log.warn("Gemini API klaida ({}): {}", request.mealType(), error);
+            return failure(AiRequestResult.API_ERROR, requestJson, error, elapsedMs(started));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             call.cancel(true);
@@ -121,6 +120,15 @@ public class GeminiAgent implements IAIAgent {
     private AiMealResponse failure(AiRequestResult result, String requestJson, String error, int durationMs) {
         return new AiMealResponse(result, requestJson, mapper.writeValueAsString(Map.of("error", error)), List.of(),
                 durationMs, error);
+    }
+
+    /** Spring AI tikrąją Gemini API klaidą (pvz., 400 INVALID_ARGUMENT) apgaubia bendra išimtimi. */
+    static String rootCause(Throwable e) {
+        Throwable root = e;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        return root.getClass().getSimpleName() + ": " + root.getMessage();
     }
 
     private static String mealTypeName(MealType type) {
