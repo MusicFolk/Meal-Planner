@@ -32,7 +32,7 @@ public final class MealPlanMapper {
 
     public static MealPlanDto toDto(MealPlan plan) {
         List<PlanDayDto> days = plan.getDays().stream()
-                .map(day -> new PlanDayDto(day.getDayNumber(), day.getTotalCalories(),
+                .map(day -> new PlanDayDto(day.getDayNumber(), day.getTotalCalories(), day.getDeviationPercent(),
                         day.getMealsInOrder().stream().map(MealPlanMapper::toDto).toList()))
                 .toList();
         return new MealPlanDto(plan.getId(), plan.getCreatedAt(), plan.isActive(), plan.isAiGenerated(),

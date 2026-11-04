@@ -98,4 +98,20 @@ class CalorieCalculatorTest {
         assertThat(calculator.portionFactor(600, 500)).isEqualTo(1.2);
         assertThatThrownBy(() -> calculator.portionFactor(600, 0)).isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void portionFactorBoundsAreInclusive() {
+        assertThat(calculator.portionFactorAllowed(0.7)).isTrue();
+        assertThat(calculator.portionFactorAllowed(1.3)).isTrue();
+        assertThat(calculator.portionFactorAllowed(0.69)).isFalse();
+        assertThat(calculator.portionFactorAllowed(1.31)).isFalse();
+    }
+
+    @Test
+    void dayDeviationIsPercentOfDailyCalories() {
+        assertThat(calculator.dayDeviationPercent(2200, 2000)).isEqualByComparingTo("10.0");
+        assertThat(calculator.dayDeviationPercent(1849, 2000)).isEqualByComparingTo("-7.6");
+        assertThat(calculator.deviationAllowed(new BigDecimal("10.0"))).isTrue();
+        assertThat(calculator.deviationAllowed(new BigDecimal("-10.1"))).isFalse();
+    }
 }

@@ -2,6 +2,7 @@ package lt.vilniustech.meal_planner.service;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import lt.vilniustech.meal_planner.calories.ICalorieCalculator;
 import lt.vilniustech.meal_planner.entity.Dish;
 import lt.vilniustech.meal_planner.entity.Ingredient;
 import lt.vilniustech.meal_planner.entity.Meal;
@@ -13,11 +14,18 @@ import lt.vilniustech.meal_planner.entity.ShoppingList;
 import org.springframework.stereotype.Component;
 
 /**
- * Apskaičiuoja patiekalų ir dienų maistinę vertę tik pagal produktų DB (NFR-22) ir sudaro
- * produktų sąrašą, sumuodamas tų pačių produktų kiekius visuose plano receptuose (FR-19, NFR-24).
+ * Apskaičiuoja patiekalų ir dienų maistinę vertę tik pagal produktų DB (NFR-22), dienų nuokrypį nuo
+ * paros poreikio (FR-13) ir sudaro produktų sąrašą, sumuodamas tų pačių produktų kiekius visuose
+ * plano receptuose (FR-19, NFR-24).
  */
 @Component
 public class PlanCalculator {
+
+    private final ICalorieCalculator calculator;
+
+    public PlanCalculator(ICalorieCalculator calculator) {
+        this.calculator = calculator;
+    }
 
     public void calculate(MealPlan plan) {
         Map<Product, Integer> totals = new LinkedHashMap<>();
@@ -36,6 +44,9 @@ public class PlanCalculator {
                 dayCalories += dish.getNutrition().getKcal();
             }
             day.setTotalCalories(dayCalories);
+            if (plan.getDailyCalories() != null && plan.getDailyCalories() > 0) {
+                day.setDeviationPercent(calculator.dayDeviationPercent(dayCalories, plan.getDailyCalories()));
+            }
         }
         ShoppingList list = new ShoppingList(plan);
         totals.forEach(list::addItem);

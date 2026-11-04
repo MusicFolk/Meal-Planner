@@ -26,7 +26,7 @@ public final class MealPlanDtos {
     public record MealDto(MealType type, Integer targetCalories, DishSummaryDto dish) {
     }
 
-    public record PlanDayDto(int dayNumber, int totalCalories, List<MealDto> meals) {
+    public record PlanDayDto(int dayNumber, int totalCalories, BigDecimal deviationPercent, List<MealDto> meals) {
     }
 
     public record MealPlanDto(Long id, Instant createdAt, boolean active, boolean aiGenerated, Integer dailyCalories,

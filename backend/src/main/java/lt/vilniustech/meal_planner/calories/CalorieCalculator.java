@@ -16,6 +16,10 @@ public class CalorieCalculator implements ICalorieCalculator {
     private static final double BREAKFAST_SHARE = 0.25;
     private static final double LUNCH_SHARE = 0.40;
 
+    private static final double MIN_PORTION_FACTOR = 0.7;
+    private static final double MAX_PORTION_FACTOR = 1.3;
+    private static final BigDecimal MAX_DEVIATION_PERCENT = BigDecimal.TEN;
+
     /** KMI = m / h², suapvalintas iki 0,1 (FR-04). */
     @Override
     public BigDecimal bmi(int heightCm, BigDecimal weightKg) {
@@ -69,5 +73,26 @@ public class CalorieCalculator implements ICalorieCalculator {
             throw new IllegalArgumentException("Patiekalo kaloringumas turi būti teigiamas");
         }
         return (double) targetCalories / dishCalories;
+    }
+
+    /** Porcijų koregavimo riba: koeficientas nuo 0,7 iki 1,3 (FR-13, KAL-4). */
+    @Override
+    public boolean portionFactorAllowed(double factor) {
+        return factor >= MIN_PORTION_FACTOR && factor <= MAX_PORTION_FACTOR;
+    }
+
+    /** Nuokrypis = (dienos kaloringumas − paros poreikis) / paros poreikis × 100 % (FR-13). */
+    @Override
+    public BigDecimal dayDeviationPercent(int dayCalories, int dailyCalories) {
+        if (dailyCalories <= 0) {
+            throw new IllegalArgumentException("Paros poreikis turi būti teigiamas");
+        }
+        return BigDecimal.valueOf(dayCalories - dailyCalories).multiply(BigDecimal.valueOf(100))
+                .divide(BigDecimal.valueOf(dailyCalories), 1, RoundingMode.HALF_UP);
+    }
+
+    @Override
+    public boolean deviationAllowed(BigDecimal deviationPercent) {
+        return deviationPercent.abs().compareTo(MAX_DEVIATION_PERCENT) <= 0;
     }
 }

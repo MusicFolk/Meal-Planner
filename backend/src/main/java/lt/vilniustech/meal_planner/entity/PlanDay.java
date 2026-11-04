@@ -9,12 +9,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import lt.vilniustech.meal_planner.enums.MealType;
 
-/** Viena plano diena su bendru dienos kaloringumu. */
+/** Viena plano diena su bendru dienos kaloringumu ir jo nuokrypiu nuo paros poreikio (FR-13, FR-17). */
 @Entity
 public class PlanDay {
 
@@ -29,6 +30,9 @@ public class PlanDay {
     private int dayNumber;
 
     private int totalCalories;
+
+    /** Nuokrypis nuo paros poreikio procentais; šablono dienoms – null. */
+    private BigDecimal deviationPercent;
 
     @OneToMany(mappedBy = "planDay", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Meal> meals = new ArrayList<>();
@@ -69,6 +73,14 @@ public class PlanDay {
 
     public void setTotalCalories(int totalCalories) {
         this.totalCalories = totalCalories;
+    }
+
+    public BigDecimal getDeviationPercent() {
+        return deviationPercent;
+    }
+
+    public void setDeviationPercent(BigDecimal deviationPercent) {
+        this.deviationPercent = deviationPercent;
     }
 
     public List<Meal> getMeals() {

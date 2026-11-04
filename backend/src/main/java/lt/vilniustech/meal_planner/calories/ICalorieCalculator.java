@@ -15,4 +15,13 @@ public interface ICalorieCalculator {
     MealTargets mealTargets(int dailyCalories);
 
     double portionFactor(int targetCalories, int dishCalories);
+
+    /** Ar porcijos koeficientas leistinose ribose (0,7–1,3). */
+    boolean portionFactorAllowed(double factor);
+
+    /** Dienos kaloringumo nuokrypis nuo paros poreikio procentais, 0,1 tikslumu. */
+    BigDecimal dayDeviationPercent(int dayCalories, int dailyCalories);
+
+    /** Ar dienos nuokrypis neviršija ±10 %. */
+    boolean deviationAllowed(BigDecimal deviationPercent);
 }
