@@ -17,8 +17,8 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { api, ApiError } from '../../api/client';
 import type {
   ClientReview,
@@ -66,6 +66,7 @@ async function fetchPlanData(): Promise<PlanData> {
 export function PlanPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const showMessage = useMessage();
   const [data, setData] = useState<PlanData | null>(null);
   const [generating, setGenerating] = useState(false);
@@ -112,9 +113,19 @@ export function PlanPage() {
     }
   };
 
-  if (!data) return <Loading />;
+  // „Perkurti planą“ iš rodiklių lango: generavimas pradedamas čia vieną kartą (StrictMode kviečia efektą du kartus)
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (autoStarted.current || !(location.state as { generate?: boolean } | null)?.generate) return;
+    autoStarted.current = true;
+    navigate(location.pathname, { replace: true, state: null });
+    generate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (generating) return <Generating progress={progress} />;
+
+  if (!data) return <Loading />;
 
   const { plan, status, review, orderInfo, shopping, subscription } = data;
 

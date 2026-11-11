@@ -25,7 +25,6 @@ export function MetricsPage() {
   const showMessage = useMessage();
   const saved = location.state as QuestionnaireSaveResponse | null;
   const [q, setQ] = useState<Questionnaire | null>(saved?.questionnaire ?? null);
-  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     if (!saved) {
@@ -43,18 +42,8 @@ export function MetricsPage() {
     q.gender === 'MALE' ? '+ 5' : '− 161'
   }`;
 
-  const regenerate = async () => {
-    setBusy(true);
-    try {
-      await api.post('/api/meal-plans/generate');
-      showMessage('success', 'Savaitės mitybos planas sėkmingai sugeneruotas.');
-      navigate('/planas');
-    } catch (err) {
-      showMessage('warning', err instanceof ApiError ? err.message : 'Plano sudaryti nepavyko.');
-    } finally {
-      setBusy(false);
-    }
-  };
+  // Generavimas vykdomas plano lange, kad būtų rodoma ta pati eiga (FR-09)
+  const regenerate = () => navigate('/planas', { state: { generate: true } });
 
   return (
     <Box sx={{ maxWidth: 760, mx: 'auto' }}>
@@ -147,7 +136,7 @@ export function MetricsPage() {
             <Button variant="outlined" size="large" onClick={() => navigate('/planas')}>
               Vėliau
             </Button>
-            <Button variant="contained" size="large" startIcon={<RefreshIcon />} onClick={regenerate} disabled={busy}>
+            <Button variant="contained" size="large" startIcon={<RefreshIcon />} onClick={regenerate}>
               Perkurti planą
             </Button>
           </>

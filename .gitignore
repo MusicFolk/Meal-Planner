@@ -37,3 +37,6 @@ build/
 
 # Lokalūs Docker Compose pakeitimai
 docker-compose.override.yml
+
+### macos ###
+.DS_Store
