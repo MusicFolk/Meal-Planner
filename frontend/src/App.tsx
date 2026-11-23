@@ -4,6 +4,7 @@ import { RequireRole } from './components/RequireRole';
 import { homePath, useAuth } from './context/AuthContext';
 import { ClientLayout } from './layouts/ClientLayout';
 import { StaffLayout } from './layouts/StaffLayout';
+import { AiSettingsPage } from './pages/admin/AiSettingsPage';
 import { CreateDietitianPage } from './pages/admin/CreateDietitianPage';
 import { UsersPage } from './pages/admin/UsersPage';
 import { ChangePasswordPage } from './pages/auth/ChangePasswordPage';
@@ -84,6 +85,7 @@ export function App() {
                 sections={[
                   { path: '/admin', label: 'Naudotojai' },
                   { path: '/admin/dietologai/naujas', label: 'Nauja dietologo paskyra' },
+                  { path: '/admin/di-parametrai', label: 'DI parametrai' },
                 ]}
               />
             </RequireRole>
@@ -91,6 +93,7 @@ export function App() {
         >
           <Route path="/admin" element={<UsersPage />} />
           <Route path="/admin/dietologai/naujas" element={<CreateDietitianPage />} />
+          <Route path="/admin/di-parametrai" element={<AiSettingsPage />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />

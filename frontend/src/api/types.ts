@@ -271,3 +271,11 @@ export interface User {
   blocked: boolean;
   createdAt: string;
 }
+
+/** DI parametrai (NI-20, FR-41). */
+export interface AiConfiguration {
+  model: string;
+  dailyGenerationLimit: number;
+  changedAt: string | null;
+  changedBy: string | null;
+}
