@@ -4,9 +4,10 @@ Asmeninio mitybos planavimo sistema „Meal Planner“ – kompleksinis projekta
 Sistema pagal kliento anketą apskaičiuoja KMI ir paros kalorijų poreikį (Mifflin–St Jeor),
 pateikia savaitės mitybos planą su receptais ir produktų sąrašu, leidžia užsakyti dietologo peržiūrą.
 
-Šioje versijoje įgyvendinti **1 ir 2 sprintai** (14 lentelė): visas sistemos karkasas ir DI komponentas –
-savaitės planą sugeneruoja Google Gemini modelis, o sistema patikrina jo kaloringumą (±10 %) ir alergenus.
-1 sprinto demonstraciniai planai DB lieka (žyma „Demonstracinis planas“).
+Šioje versijoje įgyvendinti **visi trys sprintai** (14 lentelė): visas sistemos karkasas, DI komponentas –
+savaitės planą sugeneruoja Google Gemini modelis, o sistema patikrina jo kaloringumą (±10 %) ir alergenus –
+bei planų istorija ir DI parametrų administravimas. 1 sprinto demonstraciniai planai DB lieka
+(žyma „Demonstracinis planas“).
 
 ## Struktūra (NFR-35)
 
@@ -70,6 +71,7 @@ cd frontend && npm install && npm run dev
 ```
 
 Testai: `cd backend && ./mvnw test` (vienetų testai ir integraciniai testai su Testcontainers – reikia Docker).
+Padengimo ataskaita (JaCoCo) sukuriama kartu su testais: `backend/target/site/jacoco/index.html` (NFR-47).
 Kliento sąsajos tikrinimas: `cd frontend && npm run lint && npm run build`.
 
 ## Demonstracinės paskyros (NFR-41)
@@ -127,8 +129,18 @@ SELECT meal_type, result, count(*), round(avg(duration_ms)) FROM ai_generation_r
 SELECT status, count(*), avg(finished_at - started_at) FROM plan_generation GROUP BY status;
 ```
 
-3 sprinte: planų istorija, DI parametrų administravimas (`AiConfiguration`), testavimas. HTTPS su Let's Encrypt
-(NFR-11) konfigūruojamas diegiant į Azure prieš galutinę demonstraciją.
+## 3 sprinto apimtis
+
+Įgyvendintos naudotojų istorijos NI-19 ir NI-20:
+
+- planų istorija: visi kliento planai (naujausi viršuje), ankstesnio plano peržiūra su receptais ir produktų
+  sąrašu, plano žymėjimas aktualiu; veikia ir neveikiant DI paslaugai (FR-22);
+- DI parametrai: administratorius nurodo Google Gemini modelį ir dienos generavimų limitą (1–20); kiekvienas
+  pakeitimas saugomas lentelėje `ai_configuration`, galioja naujausias, o jei įrašų nėra – `GEMINI_MODEL` ir
+  `app.plans.daily-generation-limit` (FR-41, DIA-4); viršijus limitą klientui nurodoma, kada vėl galės generuoti;
+- automatiniai testai pagrindinėms užduotims ir JaCoCo padengimo ataskaita.
+
+Sistema paleidžiama lokaliai (`docker compose up`); diegimas į Azure ir apkrovos testas neatliekami.
 
 ## Trumpa instrukcija dietologui (NFR-43)
 
@@ -147,6 +159,9 @@ SELECT status, count(*), avg(finished_at - started_at) FROM plan_generation GROU
    Savo paskyros užblokuoti negalima.
 3. „Sukurti dietologo paskyrą“ – įveskite vardą, pavardę ir el. paštą. Sugeneruotas laikinas slaptažodis
    parodomas tik vieną kartą – perduokite jį dietologui.
+4. „DI parametrai“ – įrašykite Google Gemini modelio pavadinimą tiksliai kaip Google AI Studio
+   (pvz., `gemini-3.5-flash-lite`) ir dienos generavimų limitą vienam klientui (1–20). Nauji parametrai
+   taikomi nuo kito plano generavimo.
 
 ## Produktų katalogas
 
