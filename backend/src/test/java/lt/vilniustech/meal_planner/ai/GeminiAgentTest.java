@@ -3,7 +3,9 @@ package lt.vilniustech.meal_planner.ai;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import lt.vilniustech.meal_planner.ai.AiMealRequest.AllowedProduct;
 import lt.vilniustech.meal_planner.enums.AiRequestResult;
@@ -118,10 +120,33 @@ class GeminiAgentTest {
         assertThat(failed.error()).isEqualTo("IllegalStateException: 429 RESOURCE_EXHAUSTED");
         assertThat(failed.responseJson()).contains("RESOURCE_EXHAUSTED");
 
-        AiMealResponse noKey = new GeminiAgent(null, "gemini-test", ChatOptions.builder().build(), "", MAPPER)
+        AiMealResponse noKey = new GeminiAgent(null, () -> "gemini-test", m -> ChatOptions.builder().build(), "", MAPPER)
                 .generateMeals(REQUEST, Duration.ofSeconds(5));
         assertThat(noKey.result()).isEqualTo(AiRequestResult.API_ERROR);
         assertThat(noKey.error()).isEqualTo(GeminiAgent.NO_API_KEY);
+    }
+
+    @Test
+    void modelIsReadForEveryCall() {
+        AtomicReference<String> current = new AtomicReference<>("gemini-a");
+        List<String> used = new ArrayList<>();
+        ChatModel model = new ChatModel() {
+            @Override
+            public ChatResponse call(Prompt prompt) {
+                used.add(prompt.getOptions().getModel());
+                return new ChatResponse(List.of(new Generation(new AssistantMessage(VALID))));
+            }
+        };
+        GeminiAgent agent = new GeminiAgent(model, current::get, m -> ChatOptions.builder().model(m).build(), "",
+                MAPPER);
+
+        agent.generateMeals(REQUEST, Duration.ofSeconds(5));
+        // Administratorius pakeičia modelį – jis taikomas nuo kito kvietimo (DIA-4, FR-41)
+        current.set("gemini-b");
+        agent.generateMeals(REQUEST, Duration.ofSeconds(5));
+
+        assertThat(used).containsExactly("gemini-a", "gemini-b");
+        assertThat(agent.modelName()).isEqualTo("gemini-b");
     }
 
     private static GeminiAgent agent(Function<Prompt, String> answer) {
@@ -131,6 +156,7 @@ class GeminiAgentTest {
                 return new ChatResponse(List.of(new Generation(new AssistantMessage(answer.apply(prompt)))));
             }
         };
-        return new GeminiAgent(model, "gemini-test", ChatOptions.builder().build(), "Sistemos šablonas", MAPPER);
+        return new GeminiAgent(model, () -> "gemini-test", m -> ChatOptions.builder().model(m).build(),
+                "Sistemos šablonas", MAPPER);
     }
 }

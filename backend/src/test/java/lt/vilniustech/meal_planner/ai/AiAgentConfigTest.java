@@ -4,11 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import lt.vilniustech.meal_planner.config.AiAgentConfig;
+import lt.vilniustech.meal_planner.service.IAiConfiguration;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
 import tools.jackson.databind.json.JsonMapper;
 
-/** DI adapteris sukuriamas su konfigūracijoje nurodytu modeliu, šablonu ir schema (DIA-4, NFR-45). */
+/** DI adapteris sukuriamas su galiojančiu DI modeliu, šablonu ir schema (DIA-4, NFR-45). */
 class AiAgentConfigTest {
 
     private final AiAgentConfig config = new AiAgentConfig();
@@ -20,7 +21,18 @@ class AiAgentConfigTest {
     }
 
     private IAIAgent agent(String model) throws Exception {
-        return config.aiAgent("test-raktas", model, "MINIMAL", Duration.ofSeconds(25),
+        IAiConfiguration configuration = new IAiConfiguration() {
+            @Override
+            public String model() {
+                return model;
+            }
+
+            @Override
+            public int dailyGenerationLimit() {
+                return 5;
+            }
+        };
+        return config.aiAgent("test-raktas", configuration, "MINIMAL", Duration.ofSeconds(25),
                 new ClassPathResource("prompts/meal-system-prompt.txt"),
                 new ClassPathResource("prompts/meal-response-schema.json"), JsonMapper.builder().build());
     }

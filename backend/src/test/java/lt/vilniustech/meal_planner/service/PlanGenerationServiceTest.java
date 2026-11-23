@@ -34,7 +34,7 @@ class PlanGenerationServiceTest {
 
     private final CalorieCalculator calculator = new CalorieCalculator();
     private final PlanGenerationService service = new PlanGenerationService(null, null, null, null, null, null,
-            calculator, new PlanCalculator(calculator), null, null, Clock.systemUTC(), 5, Duration.ofSeconds(25),
+            calculator, new PlanCalculator(calculator), null, null, null, Clock.systemUTC(), Duration.ofSeconds(25),
             Duration.ofSeconds(60), 3, ZoneId.of("Europe/Vilnius"));
 
     private final Map<Long, Product> allowed = Map.of(1L, OATS, 2L, MILK);
