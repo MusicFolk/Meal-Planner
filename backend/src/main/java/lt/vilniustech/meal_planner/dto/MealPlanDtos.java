@@ -35,6 +35,14 @@ public final class MealPlanDtos {
                               List<PlanDayDto> days) {
     }
 
+    /**
+     * Planų istorijos įrašas (FR-22): sukūrimo data, ar aktualus, ar sugeneruotas DI, vidutinis dienos kaloringumas,
+     * didžiausias dienos nuokrypis ir pirmosios dienos patiekalai.
+     */
+    public record PlanSummaryDto(Long id, Instant createdAt, boolean active, boolean aiGenerated, Integer dailyCalories,
+                                 int averageCalories, BigDecimal maxDeviationPercent, List<String> firstDayDishes) {
+    }
+
     public record IngredientDto(Long productId, String name, int grams) {
     }
 

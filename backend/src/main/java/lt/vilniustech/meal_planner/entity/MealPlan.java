@@ -62,6 +62,11 @@ public class MealPlan {
         this.createdAt = createdAt;
     }
 
+    /** Ankstesnis planas vėl pažymimas aktualiu (FR-22). */
+    public void activate() {
+        this.active = true;
+    }
+
     public PlanDay addDay(int dayNumber) {
         PlanDay day = new PlanDay(this, dayNumber);
         days.add(day);

@@ -1,9 +1,11 @@
 package lt.vilniustech.meal_planner.mapper;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.DishSummaryDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.IngredientDto;
@@ -11,6 +13,7 @@ import lt.vilniustech.meal_planner.dto.MealPlanDtos.MealDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.MealPlanDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.NutritionDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.PlanDayDto;
+import lt.vilniustech.meal_planner.dto.MealPlanDtos.PlanSummaryDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.RecipeDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.ShoppingCategoryDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.ShoppingItemDto;
@@ -37,6 +40,17 @@ public final class MealPlanMapper {
                 .toList();
         return new MealPlanDto(plan.getId(), plan.getCreatedAt(), plan.isActive(), plan.isAiGenerated(),
                 plan.getDailyCalories(), days);
+    }
+
+    public static PlanSummaryDto toSummary(MealPlan plan) {
+        int average = (int) Math.round(plan.getDays().stream().mapToInt(PlanDay::getTotalCalories).average().orElse(0));
+        BigDecimal maxDeviation = plan.getDays().stream().map(PlanDay::getDeviationPercent).filter(Objects::nonNull)
+                .max(Comparator.comparing(BigDecimal::abs)).orElse(null);
+        List<String> firstDay = plan.getDays().stream().findFirst()
+                .map(day -> day.getMealsInOrder().stream().map(meal -> meal.getDish().getName()).toList())
+                .orElse(List.of());
+        return new PlanSummaryDto(plan.getId(), plan.getCreatedAt(), plan.isActive(), plan.isAiGenerated(),
+                plan.getDailyCalories(), average, maxDeviation, firstDay);
     }
 
     private static MealDto toDto(Meal meal) {

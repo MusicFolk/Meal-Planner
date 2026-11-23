@@ -1,8 +1,10 @@
 package lt.vilniustech.meal_planner.controller;
 
+import java.util.List;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.GenerationProgressDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.GenerationStatusDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.MealPlanDto;
+import lt.vilniustech.meal_planner.dto.MealPlanDtos.PlanSummaryDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.PurchasedRequest;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.RecipeDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.ShoppingListDto;
@@ -57,6 +59,23 @@ public class MealPlanController {
     public ResponseEntity<GenerationProgressDto> generationProgress(@AuthenticationPrincipal AppUserDetails user) {
         return generation.progress(user.getId()).map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    /** Planų istorija, naujausi viršuje (FR-22). */
+    @GetMapping
+    public List<PlanSummaryDto> history(@AuthenticationPrincipal AppUserDetails user) {
+        return plans.history(user.getId());
+    }
+
+    @GetMapping("/{planId}")
+    public MealPlanDto plan(@AuthenticationPrincipal AppUserDetails user, @PathVariable Long planId) {
+        return plans.plan(user.getId(), planId);
+    }
+
+    /** Ankstesnį planą vėl pažymi aktualiu (FR-22). */
+    @PutMapping("/{planId}/active")
+    public MealPlanDto activate(@AuthenticationPrincipal AppUserDetails user, @PathVariable Long planId) {
+        return plans.activate(user.getId(), planId);
     }
 
     @GetMapping("/dishes/{dishId}")

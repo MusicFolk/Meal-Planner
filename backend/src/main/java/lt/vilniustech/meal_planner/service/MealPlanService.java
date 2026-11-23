@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Optional;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.ExportedPlanDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.MealPlanDto;
+import lt.vilniustech.meal_planner.dto.MealPlanDtos.PlanSummaryDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.RecipeDto;
 import lt.vilniustech.meal_planner.dto.MealPlanDtos.ShoppingListDto;
 import lt.vilniustech.meal_planner.entity.Dish;
@@ -35,6 +36,31 @@ public class MealPlanService implements IMealPlans {
     @Transactional(readOnly = true)
     public Optional<MealPlanDto> activePlan(Long clientId) {
         return plans.findByClientIdAndActiveTrue(clientId).map(MealPlanMapper::toDto);
+    }
+
+    /** Visų kliento planų istorija, naujausi viršuje (FR-22). Veikia ir neveikiant DI paslaugai. */
+    @Transactional(readOnly = true)
+    public List<PlanSummaryDto> history(Long clientId) {
+        return plans.findByClientIdOrderByCreatedAtDesc(clientId).stream().map(MealPlanMapper::toSummary).toList();
+    }
+
+    /** Bet kuris kliento planas su dienomis ir patiekalais – peržiūrai iš istorijos (FR-22). */
+    @Transactional(readOnly = true)
+    public MealPlanDto plan(Long clientId, Long planId) {
+        return MealPlanMapper.toDto(ownPlan(clientId, planId));
+    }
+
+    /**
+     * Ankstesnį planą vėl pažymi aktualiu, o dabartinis aktualus planas lieka DB neaktualus (FR-22, PLN-7).
+     * Vykdoma dietologo peržiūra lieka susieta su tuo planu, kuriam buvo užsakyta.
+     */
+    public MealPlanDto activate(Long clientId, Long planId) {
+        MealPlan plan = ownPlan(clientId, planId);
+        if (!plan.isActive()) {
+            plans.deactivateAll(clientId);
+            plan.activate();
+        }
+        return MealPlanMapper.toDto(plan);
     }
 
     @Transactional(readOnly = true)
@@ -99,6 +125,12 @@ public class MealPlanService implements IMealPlans {
                                 .map(meal -> MealPlanMapper.toRecipe(meal.getDish())).toList(),
                         MealPlanMapper.toDto(plan.getShoppingList())))
                 .toList();
+    }
+
+    private MealPlan ownPlan(Long clientId, Long planId) {
+        MealPlan plan = plans.findById(planId).orElseThrow(() -> ApiException.notFound("Planas nerastas."));
+        requireOwner(plan, clientId);
+        return plan;
     }
 
     /** Klientas mato tik savo duomenis (NFR-54). */
