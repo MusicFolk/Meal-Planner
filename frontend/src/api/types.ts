@@ -117,6 +117,18 @@ export interface MealPlan {
   days: PlanDay[];
 }
 
+/** Planų istorijos įrašas (FR-22). */
+export interface PlanSummary {
+  id: number;
+  createdAt: string;
+  active: boolean;
+  aiGenerated: boolean;
+  dailyCalories: number | null;
+  averageCalories: number;
+  maxDeviationPercent: number | null;
+  firstDayDishes: string[];
+}
+
 export interface Recipe {
   planId: number;
   dishId: number;

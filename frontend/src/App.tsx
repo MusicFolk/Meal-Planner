@@ -12,7 +12,9 @@ import { RegisterPage } from './pages/auth/RegisterPage';
 import { AccountPage } from './pages/client/AccountPage';
 import { BankPage } from './pages/client/BankPage';
 import { CommentsPage } from './pages/client/CommentsPage';
+import { HistoryPlanPage } from './pages/client/HistoryPlanPage';
 import { MetricsPage } from './pages/client/MetricsPage';
+import { PlanHistoryPage } from './pages/client/PlanHistoryPage';
 import { PlanPage } from './pages/client/PlanPage';
 import { QuestionnairePage } from './pages/client/QuestionnairePage';
 import { RecipePage } from './pages/client/RecipePage';
@@ -47,6 +49,9 @@ export function App() {
           <Route path="/planas/patiekalas/:dishId" element={<RecipePage />} />
           <Route path="/planas/komentarai" element={<CommentsPage />} />
           <Route path="/planas/perziura" element={<ReviewOrderPage />} />
+          <Route path="/planas/istorija" element={<PlanHistoryPage />} />
+          <Route path="/planas/istorija/:planId" element={<HistoryPlanPage />} />
+          <Route path="/planas/istorija/:planId/produktai" element={<ShoppingListPage />} />
           <Route path="/produktai" element={<ShoppingListPage />} />
           <Route path="/anketa" element={<QuestionnairePage />} />
           <Route path="/anketa/rodikliai" element={<MetricsPage />} />

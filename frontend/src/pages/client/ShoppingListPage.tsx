@@ -1,6 +1,6 @@
 import { Box, Button, Card, Checkbox, LinearProgress, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Stack, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { api, ApiError } from '../../api/client';
 import type { MealPlan, ShoppingItem, ShoppingList } from '../../api/types';
 import { Loading } from '../../components/Loading';
@@ -13,15 +13,19 @@ import { productCategoryLabels } from '../../lib/labels';
 export function ShoppingListPage() {
   const navigate = useNavigate();
   const showMessage = useMessage();
+  // Iš planų istorijos atidaromas pasirinkto plano sąrašas, kitaip – aktualaus plano (FR-22)
+  const { planId } = useParams();
   const [list, setList] = useState<ShoppingList | null | undefined>(undefined);
 
   useEffect(() => {
-    api
-      .get<MealPlan | undefined>('/api/meal-plans/active')
-      .then((plan) => (plan ? api.get<ShoppingList>(`/api/meal-plans/${plan.id}/shopping-list`) : null))
+    const planIdPromise = planId
+      ? Promise.resolve(Number(planId))
+      : api.get<MealPlan | undefined>('/api/meal-plans/active').then((plan) => plan?.id);
+    planIdPromise
+      .then((id) => (id ? api.get<ShoppingList>(`/api/meal-plans/${id}/shopping-list`) : null))
       .then(setList)
       .catch((e: ApiError) => showMessage('error', e.message));
-  }, [showMessage]);
+  }, [planId, showMessage]);
 
   if (list === undefined) return <Loading />;
 
@@ -63,7 +67,11 @@ export function ShoppingListPage() {
 
   return (
     <Box sx={{ maxWidth: 760, mx: 'auto' }}>
-      <PageTitle title="Produktų sąrašas" subtitle={`${list.purchasedItems} iš ${list.totalItems} nupirkta`} />
+      <PageTitle
+        title="Produktų sąrašas"
+        subtitle={`${list.purchasedItems} iš ${list.totalItems} nupirkta`}
+        back={planId ? `/planas/istorija/${planId}` : undefined}
+      />
       <LinearProgress
         variant="determinate"
         value={(list.purchasedItems / Math.max(1, list.totalItems)) * 100}

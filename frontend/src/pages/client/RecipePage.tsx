@@ -1,6 +1,6 @@
 import { Alert, AlertTitle, Box, Stack } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router';
+import { useLocation, useParams } from 'react-router';
 import { api, ApiError } from '../../api/client';
 import type { ClientReview, Recipe } from '../../api/types';
 import { Loading } from '../../components/Loading';
@@ -13,18 +13,19 @@ import { RecipeView } from '../../components/RecipeView';
 /** Patiekalo recepto langas (3.1 užduotis, FR-18) su dietologo komentaru patiekalui. */
 export function RecipePage() {
   const { dishId } = useParams();
+  const location = useLocation();
+  // Iš planų istorijos grįžtama į tą patį planą
+  const back = (location.state as { back?: string } | null)?.back ?? '/planas';
   const showMessage = useMessage();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [review, setReview] = useState<ClientReview | undefined>();
 
   useEffect(() => {
-    Promise.all([
-      api.get<Recipe>(`/api/meal-plans/dishes/${dishId}`),
-      api.get<ClientReview | undefined>('/api/reviews/current'),
-    ])
-      .then(([r, rev]) => {
+    // Peržiūra imama to plano, kuriam priklauso patiekalas (ir iš planų istorijos)
+    Promise.all([api.get<Recipe>(`/api/meal-plans/dishes/${dishId}`), api.get<ClientReview[]>('/api/reviews')])
+      .then(([r, reviews]) => {
         setRecipe(r);
-        setReview(rev);
+        setReview(reviews.find((rev) => rev.planId === r.planId));
       })
       .catch((e: ApiError) => showMessage('error', e.message));
   }, [dishId, showMessage]);
@@ -38,7 +39,7 @@ export function RecipePage() {
 
   return (
     <Box sx={{ maxWidth: 760, mx: 'auto' }}>
-      <PageTitle title={recipe.name} subtitle={mealTypeLabels[recipe.mealType]} back="/planas" />
+      <PageTitle title={recipe.name} subtitle={mealTypeLabels[recipe.mealType]} back={back} />
       <Stack spacing={2}>
         <RecipeView recipe={recipe} />
         {comments.map((c) => (

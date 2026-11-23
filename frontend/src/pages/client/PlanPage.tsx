@@ -1,16 +1,14 @@
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutlineOutlined';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
+import HistoryIcon from '@mui/icons-material/History';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import {
   Alert,
   Box,
   Button,
-  ButtonBase,
   Card,
-  CardActionArea,
   CardContent,
   CircularProgress,
   LinearProgress,
@@ -30,15 +28,15 @@ import type {
   ShoppingList,
   Subscription,
 } from '../../api/types';
-import { AiBadge, DemoBadge } from '../../components/AiBadge';
-import { DishCard } from '../../components/DishCard';
+import { LinkCard } from '../../components/LinkCard';
 import { Loading } from '../../components/Loading';
 import { PrimaryAction } from '../../components/PrimaryAction';
 import { ReviewStatusChip } from '../../components/ReviewStatusChip';
 import { ReviewStatusProgress } from '../../components/ReviewStatusProgress';
+import { WeekPlan } from '../../components/WeekPlan';
 import { useAuth } from '../../context/AuthContext';
 import { useMessage } from '../../context/MessageContext';
-import { formatDate, formatDayHeading, formatInt, formatWeekRange, planCalendar } from '../../lib/format';
+import { formatDate } from '../../lib/format';
 import { mealTypeLabels } from '../../lib/labels';
 
 interface PlanData {
@@ -71,7 +69,6 @@ export function PlanPage() {
   const [data, setData] = useState<PlanData | null>(null);
   const [generating, setGenerating] = useState(false);
   const [progress, setProgress] = useState<GenerationProgress>();
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   useEffect(() => {
     fetchPlanData()
@@ -98,7 +95,6 @@ export function PlanPage() {
     try {
       await api.post<MealPlan>('/api/meal-plans/generate');
       setData(await fetchPlanData());
-      setSelectedDay(null);
       showMessage('success', 'Savaitės mitybos planas sėkmingai sugeneruotas.');
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
@@ -135,14 +131,6 @@ export function PlanPage() {
     );
   }
 
-  const calendar = planCalendar(plan.createdAt, user?.firstDayOfWeek ?? 'MONDAY');
-  const todayNumber = ((new Date().getDay() + 6) % 7) + 1;
-  const inThisWeek = calendar.some((d) => formatDate(d.date) === formatDate(new Date()));
-  const dayNumber = selectedDay ?? (inThisWeek ? todayNumber : calendar[0].dayNumber);
-  const day = plan.days.find((d) => d.dayNumber === dayNumber) ?? plan.days[0];
-  const calendarDay = calendar.find((c) => c.dayNumber === day.dayNumber)!;
-  const target = plan.dailyCalories ?? day.totalCalories;
-  const deviation = day.deviationPercent ?? (target ? ((day.totalCalories - target) / target) * 100 : 0);
   const completedComments = review?.status === 'COMPLETED' ? review.comments : [];
   const commentCount = (dishId: number) => completedComments.filter((c) => c.dishId === dishId).length;
 
@@ -155,93 +143,13 @@ export function PlanPage() {
         alignItems: 'start',
       }}
     >
-      <Stack spacing={2}>
-        <Box>
-          <Typography variant="body2" color="text.secondary">
-            {formatWeekRange(calendar[0].date, calendar[6].date)}
-          </Typography>
-          <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
-            <Typography variant="h5" component="h1" sx={{ fontWeight: 700 }}>
-              Savaitės planas
-            </Typography>
-            {plan.aiGenerated ? <AiBadge size="medium" /> : <DemoBadge />}
-          </Stack>
-        </Box>
-
-        <Box
-          role="tablist"
-          aria-label="Savaitės dienos"
-          sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: { xs: 0.5, sm: 1 } }}
-        >
-          {calendar.map((c) => {
-            const selected = c.dayNumber === day.dayNumber;
-            const planDay = plan.days.find((d) => d.dayNumber === c.dayNumber);
-            return (
-              <ButtonBase
-                key={c.dayNumber}
-                role="tab"
-                aria-selected={selected}
-                aria-label={formatDayHeading(c)}
-                onClick={() => setSelectedDay(c.dayNumber)}
-                sx={{
-                  flexDirection: 'column',
-                  py: 1,
-                  borderRadius: 2,
-                  border: 1,
-                  borderColor: selected ? 'text.primary' : 'divider',
-                  bgcolor: selected ? 'text.primary' : 'background.paper',
-                  color: selected ? 'background.paper' : 'text.primary',
-                }}
-              >
-                <Typography variant="caption">{c.short}</Typography>
-                <Typography sx={{ fontWeight: 700, fontSize: '1.15rem' }}>{c.date.getDate()}</Typography>
-                {planDay && (
-                  <Typography variant="caption" sx={{ display: { xs: 'none', md: 'block' }, opacity: 0.8 }}>
-                    {formatInt(planDay.totalCalories)} kcal
-                  </Typography>
-                )}
-              </ButtonBase>
-            );
-          })}
-        </Box>
-
-        <Card>
-          <CardContent>
-            <Stack direction="row" sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
-              <Typography sx={{ fontWeight: 600 }}>{formatDayHeading(calendarDay)}</Typography>
-              <Typography sx={{ fontWeight: 600 }}>
-                {formatInt(day.totalCalories)} / {formatInt(target)} kcal
-              </Typography>
-            </Stack>
-            <LinearProgress
-              variant="determinate"
-              value={Math.min(100, (day.totalCalories / target) * 100)}
-              sx={{ my: 1.5, height: 8, borderRadius: 4 }}
-              aria-label="Dienos kaloringumas"
-            />
-            <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-              <CheckCircleOutlineIcon color={Math.abs(deviation) <= 10 ? 'success' : 'warning'} fontSize="small" />
-              <Typography variant="body2">
-                {Math.abs(deviation) <= 10 ? 'Atitinka paros poreikį' : 'Nukrypsta nuo paros poreikio'} (
-                {deviation >= 0 ? '+' : ''}
-                {deviation.toFixed(1).replace('.', ',')} %)
-              </Typography>
-            </Stack>
-          </CardContent>
-        </Card>
-
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(3, 1fr)' }, gap: 2 }}>
-          {day.meals.map((meal) => (
-            <DishCard
-              key={meal.type}
-              meal={meal}
-              aiGenerated={plan.aiGenerated}
-              commentCount={commentCount(meal.dish.id)}
-              onClick={() => navigate(`/planas/patiekalas/${meal.dish.id}`)}
-            />
-          ))}
-        </Box>
-      </Stack>
+      <WeekPlan
+        key={plan.id}
+        plan={plan}
+        firstDayOfWeek={user?.firstDayOfWeek ?? 'MONDAY'}
+        commentCount={commentCount}
+        onDishClick={(dishId) => navigate(`/planas/patiekalas/${dishId}`)}
+      />
 
       <Stack spacing={2}>
         <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2 }}>
@@ -257,6 +165,14 @@ export function PlanPage() {
             subtitle={completedComments.length > 0 ? `${completedComments.length} dietologo komentarai` : 'Komentarų nėra'}
             onClick={() => navigate('/planas/komentarai')}
           />
+          <Box sx={{ gridColumn: '1 / -1' }}>
+            <LinkCard
+              icon={<HistoryIcon />}
+              title="Planų istorija"
+              subtitle="Ankstesni planai ir jų receptai"
+              onClick={() => navigate('/planas/istorija')}
+            />
+          </Box>
         </Box>
 
         {review && (
@@ -296,27 +212,6 @@ export function PlanPage() {
         )}
       </Stack>
     </Box>
-  );
-}
-
-function LinkCard({ icon, title, subtitle, onClick }: {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  onClick: () => void;
-}) {
-  return (
-    <Card>
-      <CardActionArea onClick={onClick} sx={{ height: '100%' }}>
-        <CardContent>
-          {icon}
-          <Typography sx={{ fontWeight: 600, mt: 1 }}>{title}</Typography>
-          <Typography variant="body2" color="text.secondary">
-            {subtitle}
-          </Typography>
-        </CardContent>
-      </CardActionArea>
-    </Card>
   );
 }
 
