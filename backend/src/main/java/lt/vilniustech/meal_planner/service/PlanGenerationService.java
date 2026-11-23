@@ -73,7 +73,8 @@ public class PlanGenerationService {
     static final String NO_QUESTIONNAIRE = "Norėdami generuoti planą, pirmiausia užpildykite anketą.";
     static final String SUBSCRIPTION_EXPIRED =
             "Prenumerata nebegalioja. Norėdami generuoti planą, atnaujinkite prenumeratą.";
-    static final String LIMIT_REACHED = "Šiandien planą galite generuoti dar 0 kartų. Bandykite rytoj.";
+    static final String LIMIT_REACHED =
+            "Šiandien planą galite generuoti dar 0 kartų. Vėl galėsite generuoti %s nuo 00:00.";
     static final String IN_PROGRESS = "Planas jau generuojamas. Palaukite, kol generavimas baigsis.";
     static final String GENERATION_FAILED = "Plano sugeneruoti nepavyko. Ankstesnis planas nepakeistas.";
 
@@ -91,7 +92,7 @@ public class PlanGenerationService {
     private final IAIAgent agent;
     private final TransactionTemplate tx;
     private final Clock clock;
-    private final int dailyLimit;
+    private final IAiConfiguration aiConfiguration;
     private final Duration callTimeout;
     private final Duration generationTimeout;
     private final int maxAttempts;
@@ -101,8 +102,8 @@ public class PlanGenerationService {
     public PlanGenerationService(PlanGenerationRepository generations, AiGenerationRequestRepository aiRequests,
                                  MealPlanRepository plans, UserRepository users, IQuestionnaire questionnaire,
                                  ISubscription subscription, ICalorieCalculator calculator,
-                                 PlanCalculator planCalculator, IAIAgent agent, TransactionTemplate tx, Clock clock,
-                                 @Value("${app.plans.daily-generation-limit}") int dailyLimit,
+                                 PlanCalculator planCalculator, IAIAgent agent, IAiConfiguration aiConfiguration,
+                                 TransactionTemplate tx, Clock clock,
                                  @Value("${app.ai.call-timeout}") Duration callTimeout,
                                  @Value("${app.ai.generation-timeout}") Duration generationTimeout,
                                  @Value("${app.ai.max-attempts}") int maxAttempts,
@@ -118,7 +119,7 @@ public class PlanGenerationService {
         this.agent = agent;
         this.tx = tx;
         this.clock = clock;
-        this.dailyLimit = dailyLimit;
+        this.aiConfiguration = aiConfiguration;
         this.callTimeout = callTimeout;
         this.generationTimeout = generationTimeout;
         this.maxAttempts = maxAttempts;
@@ -134,7 +135,10 @@ public class PlanGenerationService {
             boolean questionnaireFilled = questionnaire.dailyCalories(clientId).isPresent();
             SubscriptionStatus status = subscription.status(clientId);
             boolean inProgress = runningGeneration(clientId).isPresent();
-            Instant startOfDay = LocalDate.now(clock.withZone(zone)).atStartOfDay(zone).toInstant();
+            LocalDate today = LocalDate.now(clock.withZone(zone));
+            Instant startOfDay = today.atStartOfDay(zone).toInstant();
+            // Limitą nustato administratorius; nauji parametrai taikomi nuo kito generavimo (FR-41)
+            int dailyLimit = aiConfiguration.dailyGenerationLimit();
             long successfulToday = generations.countByClientIdAndStatusAndStartedAtGreaterThanEqual(clientId,
                     GenerationStatus.SUCCESS, startOfDay);
             int remaining = (int) Math.max(0, dailyLimit - successfulToday);
@@ -146,7 +150,8 @@ public class PlanGenerationService {
             } else if (inProgress) {
                 reason = IN_PROGRESS;
             } else if (remaining == 0) {
-                reason = LIMIT_REACHED;
+                // Klientui nurodoma, kada jis vėl galės generuoti planą (NI-20)
+                reason = LIMIT_REACHED.formatted(today.plusDays(1));
             }
             return new GenerationStatusDto(reason == null, reason, questionnaireFilled, status, remaining,
                     dailyLimit, inProgress);

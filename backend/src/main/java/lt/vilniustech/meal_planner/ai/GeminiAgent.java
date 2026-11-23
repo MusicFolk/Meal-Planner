@@ -10,6 +10,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import lt.vilniustech.meal_planner.enums.AiRequestResult;
 import lt.vilniustech.meal_planner.enums.MealType;
 import org.slf4j.Logger;
@@ -35,8 +37,8 @@ public class GeminiAgent implements IAIAgent {
     static final String NO_API_KEY = "Nenurodytas GEMINI_API_KEY";
 
     private final ChatModel chatModel;
-    private final String model;
-    private final ChatOptions options;
+    private final Supplier<String> model;
+    private final Function<String, ChatOptions> options;
     private final String systemPrompt;
     private final ObjectMapper mapper;
     private final AiResponseParser parser;
@@ -44,10 +46,12 @@ public class GeminiAgent implements IAIAgent {
 
     /**
      * @param chatModel Spring AI pokalbių modelis arba null, jei API raktas nenurodytas
-     * @param options   modelio parinktys: modelis, atsakymo JSON schema, mąstymo lygis
+     * @param model     galiojantis DI modelis – nuskaitomas kiekvienam kvietimui, todėl administratoriaus
+     *                  pakeitimas taikomas nuo kito generavimo (DIA-4)
+     * @param options   modelio parinktys pagal modelį: atsakymo JSON schema, mąstymo lygis
      */
-    public GeminiAgent(ChatModel chatModel, String model, ChatOptions options, String systemPrompt,
-                       ObjectMapper mapper) {
+    public GeminiAgent(ChatModel chatModel, Supplier<String> model, Function<String, ChatOptions> options,
+                       String systemPrompt, ObjectMapper mapper) {
         this.chatModel = chatModel;
         this.model = model;
         this.options = options;
@@ -58,7 +62,7 @@ public class GeminiAgent implements IAIAgent {
 
     @Override
     public String modelName() {
-        return model;
+        return model.get();
     }
 
     @Override
@@ -67,7 +71,8 @@ public class GeminiAgent implements IAIAgent {
         if (chatModel == null) {
             return failure(AiRequestResult.API_ERROR, requestJson, NO_API_KEY, 0);
         }
-        Prompt prompt = new Prompt(List.of(new SystemMessage(systemPrompt), new UserMessage(requestJson)), options);
+        Prompt prompt = new Prompt(List.of(new SystemMessage(systemPrompt), new UserMessage(requestJson)),
+                options.apply(model.get()));
         long started = System.nanoTime();
         Future<String> call = executor.submit(() -> chatModel.call(prompt).getResult().getOutput().getText());
         String text;

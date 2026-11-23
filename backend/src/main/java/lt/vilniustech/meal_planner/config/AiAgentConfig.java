@@ -7,8 +7,10 @@ import io.micrometer.observation.ObservationRegistry;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.function.Function;
 import lt.vilniustech.meal_planner.ai.GeminiAgent;
 import lt.vilniustech.meal_planner.ai.IAIAgent;
+import lt.vilniustech.meal_planner.service.IAiConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.google.genai.GoogleGenAiChatModel;
@@ -23,8 +25,8 @@ import org.springframework.core.retry.RetryTemplate;
 import tools.jackson.databind.ObjectMapper;
 
 /**
- * DI adapterio konfigūracija. DI modelis nurodomas aplinkos kintamuoju GEMINI_MODEL (DIA-4, 2 sprintas),
- * API raktas – GEMINI_API_KEY (NFR-57). Spring AI ir Gemini kliento pakartojimai išjungti: pakartojimus
+ * DI adapterio konfigūracija. DI modelį nustato administratorius (AiConfiguration), o jei jis nenustatytas –
+ * naudojamas aplinkos kintamasis GEMINI_MODEL (DIA-4). API raktas – GEMINI_API_KEY (NFR-57). Spring AI ir Gemini kliento pakartojimai išjungti: pakartojimus
  * pagal valgymo tipą valdo mitybos plano komponentas (FR-14).
  */
 @Configuration
@@ -34,22 +36,26 @@ public class AiAgentConfig {
 
     @Bean
     public IAIAgent aiAgent(@Value("${app.ai.api-key:}") String apiKey,
-                            @Value("${app.ai.model}") String model,
+                            IAiConfiguration configuration,
                             @Value("${app.ai.thinking-level}") String thinkingLevel,
                             @Value("${app.ai.call-timeout}") Duration callTimeout,
                             @Value("${app.ai.system-prompt}") Resource systemPrompt,
                             @Value("${app.ai.response-schema}") Resource responseSchema,
                             ObjectMapper mapper) throws IOException {
-        GoogleGenAiChatOptions.Builder options = GoogleGenAiChatOptions.builder();
-        options.model(model);
-        options.responseMimeType("application/json");
-        options.responseSchema(responseSchema.getContentAsString(StandardCharsets.UTF_8));
-        // Mąstymas sulėtina atsakymą, todėl jis sumažinamas iki minimumo (25 s riba, NFR-28)
-        if (model.startsWith("gemini-2")) {
-            options.thinkingBudget(0);
-        } else {
-            options.thinkingLevel(GoogleGenAiThinkingLevel.valueOf(thinkingLevel));
-        }
+        String schema = responseSchema.getContentAsString(StandardCharsets.UTF_8);
+        Function<String, GoogleGenAiChatOptions> options = model -> {
+            GoogleGenAiChatOptions.Builder builder = GoogleGenAiChatOptions.builder();
+            builder.model(model);
+            builder.responseMimeType("application/json");
+            builder.responseSchema(schema);
+            // Mąstymas sulėtina atsakymą, todėl jis sumažinamas iki minimumo (25 s riba, NFR-28)
+            if (model.startsWith("gemini-2")) {
+                builder.thinkingBudget(0);
+            } else {
+                builder.thinkingLevel(GoogleGenAiThinkingLevel.valueOf(thinkingLevel));
+            }
+            return builder.build();
+        };
 
         GoogleGenAiChatModel chatModel = null;
         if (apiKey.isBlank()) {
@@ -64,12 +70,12 @@ public class AiAgentConfig {
                     .build();
             chatModel = GoogleGenAiChatModel.builder()
                     .genAiClient(client)
-                    .options(options.build())
+                    .options(options.apply(configuration.model()))
                     .retryTemplate(new RetryTemplate(RetryPolicy.withMaxRetries(0)))
                     .observationRegistry(ObservationRegistry.NOOP)
                     .build();
         }
-        return new GeminiAgent(chatModel, model, options.build(),
+        return new GeminiAgent(chatModel, configuration::model, options::apply,
                 systemPrompt.getContentAsString(StandardCharsets.UTF_8), mapper);
     }
 }
